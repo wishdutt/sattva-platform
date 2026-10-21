@@ -1,0 +1,34 @@
+{
+  "name": "@lsp/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/local/server.ts",
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "seed": "tsx src/local/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.716.0",
+    "@aws-sdk/client-eventbridge": "^3.716.0",
+    "@aws-sdk/client-s3": "^3.716.0",
+    "@aws-sdk/client-secrets-manager": "^3.716.0",
+    "@aws-sdk/client-sesv2": "^3.716.0",
+    "@aws-sdk/lib-dynamodb": "^3.716.0",
+    "@aws-sdk/s3-request-presigner": "^3.716.0",
+    "@lsp/shared": "*",
+    "aws-jwt-verify": "^5.2.1",
+    "livekit-server-sdk": "^2.19.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.146",
+    "@types/node": "^22.10.2",
+    "aws-sdk-client-mock": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.2",
+    "vitest": "^3.2.4"
+  }
+}

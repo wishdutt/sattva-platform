@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars (git-ignored). No credentials belong in this file.
+region                   = "us-east-1"
+livekit_url              = "wss://your-prod-project.livekit.cloud"
+web_base_url             = "https://events.example.com"
+web_origins              = ["https://events.example.com"]
+ses_domain               = "example.com"
+ses_from_address         = "events@example.com"
+bucket_suffix            = "123456789012"
+recording_retention_days = 365
+alarm_email              = "oncall@example.com"

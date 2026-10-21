@@ -1,0 +1,13 @@
+output "api_url" { value = module.api.api_endpoint }
+output "livekit_webhook_url" { value = "${module.api.api_endpoint}/api/v1/webhooks/livekit" }
+output "cognito_user_pool_id" { value = module.cognito.user_pool_id }
+output "cognito_web_client_id" { value = module.cognito.web_client_id }
+output "cognito_mobile_client_id" { value = module.cognito.mobile_client_id }
+output "table_name" { value = module.table.table_name }
+output "media_bucket" { value = module.media.bucket_name }
+output "livekit_secret_arn" { value = module.secrets.livekit_secret_arn }
+output "egress_secret_arn" { value = module.secrets.egress_secret_arn }
+output "egress_iam_user" { value = module.secrets.egress_iam_user }
+output "ses_dkim_records" { value = module.ses.dkim_records }
+output "alarm_topic_arn" { value = module.monitoring.alarm_topic_arn }
+output "amplify_app_id" { value = try(aws_amplify_app.web[0].id, null) }

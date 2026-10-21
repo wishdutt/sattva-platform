@@ -1,0 +1,33 @@
+[
+  {
+    "PK": "EVENT#0mvi5l2du_K1J2GsdGJXD", "SK": "META", "entity": "Event",
+    "GSI1PK": "ORG#3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11", "GSI1SK": "2026-11-01T17:00:00.000Z#0mvi5l2du_K1J2GsdGJXD",
+    "GSI2PK": "STATUS#SCHEDULED", "GSI2SK": "2026-11-01T17:00:00.000Z#0mvi5l2du_K1J2GsdGJXD",
+    "id": "0mvi5l2du_K1J2GsdGJXD", "title": "Q4 All-Hands", "description": "Quarterly update",
+    "startAt": "2026-11-01T17:00:00.000Z", "durationMinutes": 60, "timeZone": "America/New_York",
+    "status": "SCHEDULED", "organizerId": "3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11",
+    "roomName": "evt-0mvi5l2du_K1J2GsdGJXD", "maxParticipants": 50, "maxSpeakers": 5,
+    "recordingEnabled": true, "chatEnabled": true, "chatPersistence": true, "thumbnailKey": null,
+    "activeRecordingId": null, "activeStreamSessionId": null, "liveStartedAt": null, "endedAt": null,
+    "createdAt": "2026-10-21T13:00:00.000Z", "updatedAt": "2026-10-21T13:00:00.000Z", "version": 1
+  },
+  {
+    "PK": "EVENT#0mvi5l2du_K1J2GsdGJXD", "SK": "MEMBER#3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11", "entity": "Member",
+    "GSI1PK": "MEMBER#3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11", "GSI1SK": "2026-11-01T17:00:00.000Z#0mvi5l2du_K1J2GsdGJXD",
+    "eventId": "0mvi5l2du_K1J2GsdGJXD", "userId": "3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11", "email": "org@example.com",
+    "displayName": "Olivia Organizer", "role": "ORGANIZER", "status": "ACTIVE", "canModerate": true,
+    "eventStartAt": "2026-11-01T17:00:00.000Z", "joinedAt": "2026-10-21T13:00:00.000Z", "updatedAt": "2026-10-21T13:00:00.000Z"
+  },
+  {
+    "PK": "EVENT#0mvi5l2du_K1J2GsdGJXD", "SK": "INVITE#0mvi5n1aaQ2xY", "entity": "Invitation",
+    "GSI2PK": "INVTOKEN#9f2b5c1e0d7a4b3c8e6f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d", "GSI2SK": "INVITE",
+    "id": "0mvi5n1aaQ2xY", "eventId": "0mvi5l2du_K1J2GsdGJXD", "email": "viewer@example.com", "role": "VIEWER",
+    "status": "PENDING", "tokenHash": "9f2b5c1e0d7a4b3c8e6f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+    "invitedBy": "3c1f6c2e-0f8b-4f0e-9d5e-2a7b9d1a4e11", "createdAt": "2026-10-21T13:05:00.000Z",
+    "expiresAt": "2026-10-24T13:05:00.000Z", "acceptedAt": null, "acceptedBy": null, "ttl": 1793539500
+  },
+  {
+    "PK": "EVENT#0mvi5l2du_K1J2GsdGJXD", "SK": "CAPACITY", "entity": "Capacity",
+    "eventId": "0mvi5l2du_K1J2GsdGJXD", "total": 0, "hosts": 0, "speakers": 0
+  }
+]

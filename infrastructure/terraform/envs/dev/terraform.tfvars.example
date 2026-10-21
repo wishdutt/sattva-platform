@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (git-ignored). Contains NO secrets: LiveKit and S3 credentials go to
+# AWS Secrets Manager out-of-band (see docs/deployment.md).
+region           = "us-east-1"
+livekit_url      = "wss://your-project.livekit.cloud"
+web_base_url     = "http://localhost:3000"
+web_origins      = ["http://localhost:3000"]
+ses_domain       = "example.com"
+ses_from_address = "events@example.com"
+bucket_suffix    = "123456789012"
+alarm_email      = "oncall@example.com"
+# amplify_repository = "https://github.com/your-org/live-stream-platform"
+# Prefer setting the token via TF_VAR_amplify_github_token; note it is stored (encrypted) in state.

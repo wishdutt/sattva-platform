@@ -1,0 +1,38 @@
+{
+  "name": "live-stream-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Private interactive live event streaming platform (web, iOS, Android) on AWS + LiveKit Cloud",
+  "packageManager": "npm@10.9.0",
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/ui",
+    "services/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @lsp/api",
+    "dev:web": "npm run dev -w @lsp/web",
+    "dev:mobile": "npm --prefix apps/mobile run start",
+    "build": "npm run build -w @lsp/api && npm run build -w @lsp/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
+    "format": "prettier --write .",
+    "tf:fmt": "terraform -chdir=infrastructure/terraform fmt -recursive"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.64.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.0.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

@@ -1,0 +1,345 @@
+openapi: 3.1.0
+info:
+  title: Stagecast — Private Live Event API
+  version: 0.1.0
+  description: |
+    All routes except the LiveKit webhook require `Authorization: Bearer <Cognito ID token>`.
+    Errors use `{ "error": { "code", "message", "details?", "requestId" } }`.
+    Non-members receive **404** for event resources (existence is not disclosed).
+    Request/response schemas are implemented in `packages/shared/src/schemas.ts` and `dto.ts`.
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/api/v1
+    variables:
+      apiId: { default: example }
+      region: { default: us-east-1 }
+  - url: http://localhost:4000/api/v1
+security:
+  - cognitoIdToken: []
+
+components:
+  securitySchemes:
+    cognitoIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    livekitSignature:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: LiveKit-signed JWT whose `sha256` claim matches the request body.
+  parameters:
+    EventId: { name: id, in: path, required: true, schema: { type: string } }
+    UserId: { name: userId, in: path, required: true, schema: { type: string } }
+    RequestId: { name: requestId, in: path, required: true, schema: { type: string } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: false, schema: { type: string, pattern: '^[\w-]{8,100}$' } }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoContent: { description: No content }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, examples: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, EVENT_NOT_LIVE, EVENT_FULL, SPEAKER_LIMIT, RATE_LIMITED, INVITATION_EXPIRED, INVITATION_USED, INVITATION_REVOKED] }
+            message: { type: string }
+            details: {}
+            requestId: { type: string }
+    EventStatus: { type: string, enum: [DRAFT, SCHEDULED, READY, LIVE, ENDED, CANCELLED] }
+    MemberRole: { type: string, enum: [ORGANIZER, BROADCASTER, VIEWER] }
+    CreateEvent:
+      type: object
+      required: [title, startAt, durationMinutes, timeZone]
+      properties:
+        title: { type: string, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        startAt: { type: string, format: date-time, description: Stored as UTC }
+        durationMinutes: { type: integer, minimum: 15, maximum: 720 }
+        timeZone: { type: string, description: IANA zone used for display }
+        maxParticipants: { type: integer, minimum: 2, maximum: 50, default: 50 }
+        maxSpeakers: { type: integer, minimum: 0, maximum: 5, default: 5 }
+        recordingEnabled: { type: boolean, default: false }
+        chatEnabled: { type: boolean, default: true }
+        chatPersistence: { type: boolean, default: true }
+        publish: { type: boolean, default: true }
+    UpdateEvent:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title: { type: string }
+        description: { type: string }
+        startAt: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        timeZone: { type: string }
+        maxParticipants: { type: integer }
+        maxSpeakers: { type: integer }
+        recordingEnabled: { type: boolean }
+        chatEnabled: { type: boolean }
+        chatPersistence: { type: boolean }
+        thumbnailKey: { type: [string, 'null'] }
+        status: { type: string, enum: [DRAFT, SCHEDULED, CANCELLED] }
+    Event:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        startAt: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        timeZone: { type: string }
+        status: { $ref: '#/components/schemas/EventStatus' }
+        organizerId: { type: string }
+        roomName: { type: string }
+        maxParticipants: { type: integer }
+        maxSpeakers: { type: integer }
+        recordingEnabled: { type: boolean }
+        chatEnabled: { type: boolean }
+        chatPersistence: { type: boolean }
+        thumbnailUrl: { type: [string, 'null'] }
+        recordingActive: { type: boolean }
+        liveStartedAt: { type: [string, 'null'] }
+        endedAt: { type: [string, 'null'] }
+        myRole: { oneOf: [{ $ref: '#/components/schemas/MemberRole' }, { type: 'null' }] }
+        canModerate: { type: boolean }
+    Invitation:
+      type: object
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/MemberRole' }
+        status: { type: string, enum: [PENDING, ACCEPTED, REVOKED, EXPIRED] }
+        expiresAt: { type: string, format: date-time }
+    Member:
+      type: object
+      properties:
+        userId: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        role: { $ref: '#/components/schemas/MemberRole' }
+        canModerate: { type: boolean }
+    JoinToken:
+      type: object
+      properties:
+        serverUrl: { type: string, description: LiveKit wss URL }
+        token: { type: string, description: 'LiveKit JWT, TTL 10 minutes' }
+        roomName: { type: string }
+        identity: { type: string }
+        role: { $ref: '#/components/schemas/MemberRole' }
+        canPublish: { type: boolean }
+        expiresAt: { type: string, format: date-time }
+    SpeakerRequest:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        displayName: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, REVOKED] }
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        displayName: { type: string }
+        role: { $ref: '#/components/schemas/MemberRole' }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        deleted: { type: boolean }
+    Recording:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [STARTING, ACTIVE, ENDING, READY, FAILED, DELETED] }
+        startedAt: { type: string }
+        endedAt: { type: [string, 'null'] }
+        durationSeconds: { type: [integer, 'null'] }
+        sizeBytes: { type: [integer, 'null'] }
+        playbackUrl: { type: [string, 'null'], description: Presigned S3 URL valid 15 minutes }
+
+paths:
+  /me:
+    get:
+      summary: Current user (from verified token claims)
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Error' } }
+  /me/devices:
+    post:
+      summary: Register an Expo push token
+      requestBody: { content: { application/json: { schema: { type: object, required: [pushToken, platform], properties: { pushToken: { type: string }, platform: { enum: [ios, android, web] } } } } } }
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+
+  /events:
+    get:
+      summary: Events the caller belongs to (`?scope=all` for platform admins)
+      parameters: [{ name: scope, in: query, schema: { enum: [mine, all] } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Event' } } } } } } } }
+    post:
+      summary: Create an event (organizers and admins)
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateEvent' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /events/{id}:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    get:
+      summary: Event details (members and admins)
+      responses: { '200': { description: OK }, '404': { $ref: '#/components/responses/Error' } }
+    patch:
+      summary: Update an event (organizer)
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/UpdateEvent' } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Error' } }
+  /events/{id}/start:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Open backstage (`goLive:false` → READY) or go LIVE (default). Hosts only. Idempotent.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { goLive: { type: boolean, default: true } } } } } }
+      responses: { '200': { description: OK }, '409': { $ref: '#/components/responses/Error' } }
+  /events/{id}/end:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: End the event, stop recording, delete the LiveKit room. Hosts only. Idempotent.
+      responses: { '200': { description: OK } }
+  /events/{id}/capacity:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    get: { summary: Current admissions and speaker count, responses: { '200': { description: OK } } }
+  /events/{id}/thumbnail-upload-url:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Presigned PUT for a thumbnail (≤5 MB jpeg/png/webp). Then PATCH thumbnailKey.
+      responses: { '200': { description: OK } }
+
+  /events/{id}/invitations:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Invite by email (organizer). Sends single-use links; skips existing members/pending invites.
+      requestBody: { content: { application/json: { schema: { type: object, required: [emails], properties: { emails: { type: array, maxItems: 50, items: { type: string, format: email } }, role: { enum: [VIEWER, BROADCASTER] }, message: { type: string, maxLength: 500 } } } } } }
+      responses: { '201': { description: Created }, '429': { $ref: '#/components/responses/Error' } }
+    get:
+      summary: List invitations (organizer)
+      responses: { '200': { description: OK } }
+  /events/{id}/invitations/{inviteId}:
+    delete:
+      summary: Revoke a pending invitation
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { name: inviteId, in: path, required: true, schema: { type: string } }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' }, '409': { $ref: '#/components/responses/Error' } }
+  /invitations/preview:
+    post:
+      summary: Show event title/role for a token (caller must be the invited, verified email)
+      requestBody: { content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } } }
+      responses: { '200': { description: OK }, '403': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' } }
+  /invitations/accept:
+    post:
+      summary: Accept an invitation (single-use, unexpired, email must match the verified token email)
+      requestBody: { content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } } }
+      responses: { '200': { description: OK }, '403': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' } }
+  /events/{id}/members:
+    get:
+      summary: Active members (moderators)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '200': { description: OK } }
+  /events/{id}/members/{userId}:
+    parameters: [{ $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/UserId' }]
+    patch:
+      summary: Assign broadcaster/viewer role or moderation rights (organizer). Applies live.
+      responses: { '200': { description: OK } }
+    delete:
+      summary: Remove a member (organizer). Kicks them from the room; new tokens are refused.
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+
+  /events/{id}/join-token:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Short-lived LiveKit token after membership, status and capacity checks
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/JoinToken' } } } }
+        '409': { description: EVENT_NOT_LIVE or EVENT_FULL, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { $ref: '#/components/responses/Error' }
+  /events/{id}/leave:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post: { summary: Release the caller's capacity and speaker slot, responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /events/{id}/raise-hand:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Request to speak (viewers in the room). Duplicate requests return the open request.
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SpeakerRequest' } } } } }
+    delete: { summary: Lower hand / leave stage, responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /events/{id}/speaker-requests:
+    get:
+      summary: Open requests and current speakers (moderators)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '200': { description: OK } }
+  /events/{id}/speaker-requests/{requestId}/approve:
+    post:
+      summary: Approve (moderators). Enforces the speaker limit atomically and grants publish via LiveKit.
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/RequestId' }]
+      responses: { '200': { description: OK }, '409': { description: SPEAKER_LIMIT / REQUEST_NOT_PENDING / PARTICIPANT_NOT_CONNECTED } }
+  /events/{id}/speaker-requests/{requestId}/reject:
+    post:
+      summary: Reject (moderators)
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/RequestId' }]
+      responses: { '200': { description: OK } }
+  /events/{id}/speakers/{userId}/demote:
+    post:
+      summary: Revoke speaking permission (moderators)
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/UserId' }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' }, '404': { $ref: '#/components/responses/Error' } }
+  /events/{id}/participants/{userId}/remove:
+    post:
+      summary: Disconnect a participant from the room (moderators). Membership is kept.
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/UserId' }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+
+  /events/{id}/chat:
+    parameters: [{ $ref: '#/components/parameters/EventId' }]
+    post:
+      summary: Send a chat message (≤500 chars, 5 per 10 s). Relayed to the room by the server.
+      requestBody: { content: { application/json: { schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 500 } } } } } }
+      responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ChatMessage' } } } }, '409': { description: CHAT_DISABLED / EVENT_NOT_LIVE }, '429': { $ref: '#/components/responses/Error' } }
+    get: { summary: Last 100 persisted messages, responses: { '200': { description: OK } } }
+  /events/{id}/chat/{messageId}:
+    delete:
+      summary: Remove a message (moderators)
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { name: messageId, in: path, required: true, schema: { type: string } }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+  /events/{id}/reactions:
+    post:
+      summary: Send an emoji reaction (whitelisted set, 20 per 10 s)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+
+  /events/{id}/recordings/start:
+    post:
+      summary: Start LiveKit Egress to private S3 (organizer, event LIVE, recording enabled)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '201': { description: Created }, '409': { description: RECORDING_ACTIVE / RECORDING_DISABLED / EVENT_NOT_LIVE } }
+  /events/{id}/recordings/stop:
+    post:
+      summary: Stop the active recording (organizer)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '200': { description: OK } }
+  /events/{id}/recordings:
+    get:
+      summary: Recordings with short-lived playback URLs (members)
+      parameters: [{ $ref: '#/components/parameters/EventId' }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/Recording' } } } } } } } }
+  /events/{id}/recordings/{recordingId}:
+    delete:
+      summary: Delete a recording and its S3 object (organizer)
+      parameters: [{ $ref: '#/components/parameters/EventId' }, { name: recordingId, in: path, required: true, schema: { type: string } }]
+      responses: { '204': { $ref: '#/components/responses/NoContent' } }
+
+  /webhooks/livekit:
+    post:
+      summary: LiveKit webhook receiver (signature-verified; no Cognito auth)
+      security: [{ livekitSignature: [] }]
+      requestBody: { content: { application/webhook+json: { schema: { type: object } } } }
+      responses: { '200': { description: Processed }, '401': { $ref: '#/components/responses/Error' } }
