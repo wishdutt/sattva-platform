@@ -14,6 +14,7 @@ import {
 import { createApiClient, type ApiClient, type MeDto } from '@lsp/shared';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { config } from './config';
+import { oidcIdToken, oidcManager } from './oidc';
 
 const DEV_TOKEN_KEY = 'lsp.devToken';
 
@@ -35,9 +36,9 @@ function ensureAmplify() {
 
 /** Returns a current ID token, refreshing it through Amplify when it is close to expiry. */
 async function getIdToken(): Promise<string | null> {
-  if (config.authMode === 'dev') {
-    return typeof window === 'undefined' ? null : window.localStorage.getItem(DEV_TOKEN_KEY);
-  }
+  if (typeof window === 'undefined') return null;
+  if (config.authMode === 'dev') return window.localStorage.getItem(DEV_TOKEN_KEY);
+  if (config.authMode === 'oidc') return oidcIdToken();
   ensureAmplify();
   try {
     const session = await fetchAuthSession();
@@ -55,6 +56,8 @@ interface AuthContextValue {
   api: ApiClient;
   signIn(email: string, password: string): Promise<SignInResult>;
   devSignIn(email: string, role: 'viewer' | 'organizer' | 'admin'): Promise<void>;
+  /** OIDC mode: redirect to the identity provider. `signUp` asks it to show registration (prompt=create). */
+  oidcRedirect(next: string, opts?: { signUp?: boolean }): Promise<void>;
   signUp(email: string, password: string, name: string): Promise<void>;
   confirmSignUp(email: string, code: string): Promise<void>;
   resendCode(email: string): Promise<void>;
@@ -114,6 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.localStorage.setItem(DEV_TOKEN_KEY, `dev:${email.trim().toLowerCase()}${suffix}`);
       await refresh();
     },
+    async oidcRedirect(next, opts) {
+      await oidcManager().signinRedirect({
+        state: { next },
+        ...(opts?.signUp ? { prompt: 'create' } : {}),
+      });
+    },
     async signUp(email, password, name) {
       ensureAmplify();
       await signUp({
@@ -139,10 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await confirmResetPassword({ username: email.trim().toLowerCase(), confirmationCode: code.trim(), newPassword });
     },
     async signOut() {
-      if (config.authMode === 'dev') window.localStorage.removeItem(DEV_TOKEN_KEY);
-      else await amplifySignOut();
       setMe(null);
       setStatus('signed_out');
+      if (config.authMode === 'dev') window.localStorage.removeItem(DEV_TOKEN_KEY);
+      else if (config.authMode === 'oidc') {
+        const um = oidcManager();
+        // End the provider session too when it supports RP-initiated logout.
+        await um.signoutRedirect().catch(() => um.removeUser());
+      } else await amplifySignOut();
     },
   };
 

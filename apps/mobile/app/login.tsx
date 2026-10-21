@@ -37,12 +37,19 @@ export default function Login() {
         {config.authMode === 'dev' && (
           <Text style={{ color: theme.warning }}>Local development sign-in — Cognito is bypassed.</Text>
         )}
-        <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress" />
+        {config.authMode !== 'oidc' && (
+          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress" />
+        )}
         {config.authMode === 'cognito' && (
           <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" textContentType="password" />
         )}
         {error && <ErrorText>{error}</ErrorText>}
-        <Button title="Sign in" onPress={() => void submit()} loading={busy} disabled={!email} />
+        <Button
+          title={config.authMode === 'oidc' ? `Continue with ${config.oidc.providerName}` : 'Sign in'}
+          onPress={() => void submit()}
+          loading={busy}
+          disabled={config.authMode !== 'oidc' && !email}
+        />
         {config.authMode === 'cognito' && (
           <Link href="/forgot-password" style={{ color: theme.brandLight, textAlign: 'center', fontWeight: '600', padding: 8 }}>
             Forgot password?

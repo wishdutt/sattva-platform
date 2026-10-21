@@ -4,7 +4,7 @@ import { handleLiveKitWebhook } from '../src/services/webhooks';
 import { TOKENS, createWorld } from './helpers';
 
 async function liveEvent(recordingEnabled = true) {
-  const w = createWorld();
+  const w = await createWorld();
   const id = await w.createEvent({ recordingEnabled });
   await w.addMember(id, TOKENS.viewer);
   await w.addMember(id, TOKENS.broadcaster, 'BROADCASTER');
@@ -33,7 +33,7 @@ describe('recording authorization', () => {
     expect((await w.call('POST', `/events/${id}/recordings/start`, TOKENS.organizer, {})).body.error.code).toBe(
       'RECORDING_DISABLED',
     );
-    const w2 = createWorld();
+    const w2 = await createWorld();
     const id2 = await w2.createEvent({ recordingEnabled: true });
     expect((await w2.call('POST', `/events/${id2}/recordings/start`, TOKENS.organizer, {})).body.error.code).toBe(
       'EVENT_NOT_LIVE',
@@ -66,7 +66,7 @@ describe('recording lifecycle', () => {
     const { w, id } = await liveEvent();
     await w.call('POST', `/events/${id}/recordings/start`, TOKENS.organizer, {});
     await w.call('POST', `/events/${id}/recordings/stop`, TOKENS.organizer, {});
-    const rec = [...w.store.recordings.values()][0]!;
+    const rec = (await w.store.listRecordings(id))[0]!;
     await handleLiveKitWebhook(w.deps, egressWebhook(rec.egressId!, 'complete'), 'mock-signature');
 
     const list = await w.call('GET', `/events/${id}/recordings`, TOKENS.viewer);
@@ -86,7 +86,7 @@ describe('recording lifecycle', () => {
     const { w, id } = await liveEvent();
     await w.call('POST', `/events/${id}/recordings/start`, TOKENS.organizer, {});
     await w.call('POST', `/events/${id}/recordings/stop`, TOKENS.organizer, {});
-    const rec = [...w.store.recordings.values()][0]!;
+    const rec = (await w.store.listRecordings(id))[0]!;
     expect((await w.call('DELETE', `/events/${id}/recordings/${rec.id}`, TOKENS.viewer)).status).toBe(403);
     expect((await w.call('DELETE', `/events/${id}/recordings/${rec.id}`, TOKENS.organizer)).status).toBe(204);
     expect(w.storage.deleted).toEqual([rec.s3Key]);
@@ -96,7 +96,7 @@ describe('recording lifecycle', () => {
   it('marks failed egress and clears the active flag', async () => {
     const { w, id } = await liveEvent();
     await w.call('POST', `/events/${id}/recordings/start`, TOKENS.organizer, {});
-    const rec = [...w.store.recordings.values()][0]!;
+    const rec = (await w.store.listRecordings(id))[0]!;
     await handleLiveKitWebhook(w.deps, egressWebhook(rec.egressId!, 'failed'), 'mock-signature');
     expect((await w.store.getRecording(id, rec.id))?.status).toBe('FAILED');
     expect((await w.store.getEvent(id))?.activeRecordingId).toBeNull();

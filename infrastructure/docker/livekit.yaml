@@ -1,0 +1,18 @@
+# LOCAL DEVELOPMENT ONLY — self-hosted LiveKit server for docker compose.
+# The key/secret below are public placeholders; never reuse them anywhere reachable from the internet.
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: false
+  # Browsers on the host reach the media ports through Docker's published ports on 127.0.0.1.
+  node_ip: 127.0.0.1
+keys:
+  devkey: local-dev-secret-change-me-0123456789abcdef
+webhook:
+  api_key: devkey
+  urls:
+    - http://api:4000/api/v1/webhooks/livekit
+logging:
+  level: info

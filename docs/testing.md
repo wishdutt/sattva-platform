@@ -3,7 +3,8 @@
 | Suite | Command | What it covers | Status |
 |---|---|---|---|
 | Shared schemas | `npm test -w @lsp/shared` | validation, normalization, formatting | ✅ 10 passing |
-| API unit/integration | `npm test -w @lsp/api` | authn/authz, events, invitations, tokens & grants (real LiveKit SDK signing), viewer permissions, speaker approval/demotion, concurrent approvals, capacity & 60-user join storm, recording authz, webhook signatures (real SDK), chat validation/rate limits, reconciliation, DynamoDB condition expressions | ✅ 85 passing |
+| API on PostgreSQL | `npm run test:postgres -w @lsp/api` | the same suite against `PostgresStore` on PGlite (real Postgres in WASM), plus OIDC verifier, Resend mailer, standalone config guards, migrations, job leases, TTL purge | ✅ 89 passing |
+| API unit/integration | `npm run test:memory -w @lsp/api` | authn/authz, events, invitations, tokens & grants (real LiveKit SDK signing), viewer permissions, speaker approval/demotion, concurrent approvals, capacity & 60-user join storm, recording authz, webhook signatures (real SDK), chat validation/rate limits, reconciliation, DynamoDB condition expressions | ✅ 85 passing |
 | Browser E2E | `npm run test:e2e` | organizer creates event → invites → stranger blocked → invited viewer accepts → single-use link → waiting screen → studio blocked for viewers | ✅ 2 passing, 1 skipped without LiveKit |
 | Live media E2E | same, with `LIVEKIT_URL/API_KEY/API_SECRET` exported for the API | broadcaster goes live with fake camera → viewer sees video → raise hand → approve → viewer gets mic controls | ⏳ needs LiveKit credentials |
 | Admission load | `npx tsx tests/load/join-storm.ts --dev --users 60` | 60 concurrent join-token requests → exactly 50 admitted | ✅ PASS locally (49 viewers + host, p95 37 ms) |

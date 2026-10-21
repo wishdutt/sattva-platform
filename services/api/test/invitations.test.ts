@@ -7,7 +7,7 @@ const tokenFromMail = (text: string) => text.match(/token=([\w-]+)/)![1]!;
 
 describe('invitations', () => {
   it('emails a single-use link and stores only the token hash', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     const res = await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, {
       emails: ['Viewer@Example.com'],
@@ -18,13 +18,13 @@ describe('invitations', () => {
     expect(mail.to).toBe('viewer@example.com');
     expect(mail.text).toContain('https://app.test/invite?token=');
     const token = tokenFromMail(mail.text);
-    const stored = [...w.store.invitations.values()][0]!;
+    const stored = (await w.store.listInvitations(id))[0]!;
     expect(stored.tokenHash).toBe(sha256(token));
     expect(JSON.stringify(stored)).not.toContain(token);
   });
 
   it('skips addresses that already have a pending invite or membership', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, { emails: ['viewer2@example.com'] });
@@ -36,7 +36,7 @@ describe('invitations', () => {
   });
 
   it('requires authentication and the invited, verified email address', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, { emails: ['viewer@example.com'] });
     const token = tokenFromMail(w.mailer.outbox[0]!.text);
@@ -53,7 +53,7 @@ describe('invitations', () => {
   });
 
   it('is single-use but idempotent for the same user', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     const token = await w.addMember(id, TOKENS.viewer);
     expect((await w.call('POST', '/invitations/accept', TOKENS.viewer, { token })).status).toBe(200);
@@ -64,7 +64,7 @@ describe('invitations', () => {
   });
 
   it('rejects expired invitations', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, { emails: ['viewer@example.com'] });
     const token = tokenFromMail(w.mailer.outbox[0]!.text);
@@ -77,7 +77,7 @@ describe('invitations', () => {
   });
 
   it('rejects revoked invitations', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     const inv = await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, { emails: ['viewer@example.com'] });
     const token = tokenFromMail(w.mailer.outbox[0]!.text);
@@ -88,13 +88,13 @@ describe('invitations', () => {
   });
 
   it('rejects malformed and unknown tokens', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     expect((await w.call('POST', '/invitations/accept', TOKENS.viewer, { token: 'short' })).status).toBe(400);
     expect((await w.call('POST', '/invitations/accept', TOKENS.viewer, { token: 'x'.repeat(43) })).status).toBe(404);
   });
 
   it('previews an invitation for the invited user', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ title: 'Board meeting' });
     await w.call('POST', `/events/${id}/invitations`, TOKENS.organizer, { emails: ['viewer@example.com'] });
     const token = tokenFromMail(w.mailer.outbox[0]!.text);
@@ -105,7 +105,7 @@ describe('invitations', () => {
 
 describe('membership management', () => {
   it('removing a member kicks them from the room and blocks new tokens', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -120,7 +120,7 @@ describe('membership management', () => {
   });
 
   it('organizer can assign the broadcaster role, which updates live permissions', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -132,7 +132,7 @@ describe('membership management', () => {
   });
 
   it('the organizer cannot be removed', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     const orgId = await w.userId(TOKENS.organizer);
     expect((await w.call('DELETE', `/events/${id}/members/${orgId}`, TOKENS.organizer)).status).toBe(409);

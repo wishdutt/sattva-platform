@@ -14,7 +14,7 @@ const realLiveKit = () => new RealTokenLiveKit();
 
 describe('join tokens', () => {
   it('viewers receive subscribe-only grants with a short expiry', async () => {
-    const w = createWorld({ livekit: realLiveKit() });
+    const w = await createWorld({ livekit: realLiveKit() });
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -37,7 +37,7 @@ describe('join tokens', () => {
   });
 
   it('hosts receive publish grants including screen share', async () => {
-    const w = createWorld({ livekit: realLiveKit() });
+    const w = await createWorld({ livekit: realLiveKit() });
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.broadcaster, 'BROADCASTER');
     await w.call('POST', `/events/${id}/start`, TOKENS.organizer, { goLive: false });
@@ -49,7 +49,7 @@ describe('join tokens', () => {
   });
 
   it('viewers wait until the event is live; hosts may join backstage', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     const early = await w.call('POST', `/events/${id}/join-token`, TOKENS.viewer, {});
@@ -61,7 +61,7 @@ describe('join tokens', () => {
   });
 
   it('unauthorized users cannot obtain tokens', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.goLive(id);
     expect((await w.call('POST', `/events/${id}/join-token`, TOKENS.stranger, {})).status).toBe(404);
@@ -71,7 +71,7 @@ describe('join tokens', () => {
   });
 
   it('rate limits token requests', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.goLive(id);
     const results = [];
@@ -83,7 +83,7 @@ describe('join tokens', () => {
 
 describe('capacity', () => {
   it('reserves a slot for the host and rejects viewers beyond the limit', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ maxParticipants: 3 });
     for (const t of [TOKENS.viewer, TOKENS.viewer2, TOKENS.viewer3]) await w.addMember(id, t);
     await w.goLive(id);
@@ -100,7 +100,7 @@ describe('capacity', () => {
   });
 
   it('re-issuing a token to an admitted user does not consume another slot', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ maxParticipants: 2 });
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -109,7 +109,7 @@ describe('capacity', () => {
   });
 
   it('leaving frees the slot', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ maxParticipants: 2 });
     await w.addMember(id, TOKENS.viewer);
     await w.addMember(id, TOKENS.viewer2);
@@ -122,7 +122,7 @@ describe('capacity', () => {
   });
 
   it('admits exactly the limit under a concurrent join storm of 50+ users', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ maxParticipants: 50 });
     const tokens = Array.from({ length: 60 }, (_, i) => `dev:user${i}@example.com`);
     for (const t of tokens) await w.addMember(id, t);

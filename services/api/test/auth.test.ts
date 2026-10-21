@@ -4,14 +4,14 @@ import { TOKENS, createWorld } from './helpers';
 
 describe('authentication', () => {
   it('rejects requests without a bearer token', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('GET', '/events', null);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
   it('rejects malformed tokens', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('GET', '/events', 'not-a-token');
     expect(res.status).toBe(401);
   });
@@ -39,7 +39,7 @@ describe('authentication', () => {
   });
 
   it('returns the caller profile from verified claims', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('GET', '/me', TOKENS.organizer);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ email: 'org@example.com', platformRole: 'ORGANIZER', canCreateEvents: true });
@@ -48,7 +48,7 @@ describe('authentication', () => {
 
 describe('authorization', () => {
   it('only organizers and admins can create events', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('POST', '/events', TOKENS.viewer, {
       title: 'x',
       startAt: '2026-11-01T17:00:00Z',
@@ -59,7 +59,7 @@ describe('authorization', () => {
   });
 
   it('hides events from non-members with 404', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     expect((await w.call('GET', `/events/${id}`, TOKENS.stranger)).status).toBe(404);
     expect((await w.call('GET', `/events/${id}`, TOKENS.otherOrganizer)).status).toBe(404);
@@ -67,7 +67,7 @@ describe('authorization', () => {
   });
 
   it('lists only events the user belongs to', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const a = await w.createEvent({ title: 'A' });
     await w.createEvent({ title: 'B' });
     await w.addMember(a, TOKENS.viewer);
@@ -77,7 +77,7 @@ describe('authorization', () => {
   });
 
   it('viewers cannot see draft events', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ publish: false });
     await w.addMember(id, TOKENS.viewer);
     expect((await w.call('GET', '/events', TOKENS.viewer)).body.items).toHaveLength(0);
@@ -85,14 +85,14 @@ describe('authorization', () => {
   });
 
   it('admin can list all events; others cannot use scope=all', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     await w.createEvent();
     expect((await w.call('GET', '/events?scope=all', TOKENS.admin)).body.items).toHaveLength(1);
     expect((await w.call('GET', '/events?scope=all', TOKENS.organizer)).status).toBe(403);
   });
 
   it('viewers cannot manage events', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     expect((await w.call('PATCH', `/events/${id}`, TOKENS.viewer, { title: 'hacked' })).status).toBe(403);

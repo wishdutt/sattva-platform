@@ -278,4 +278,10 @@ export interface Store {
   // Idempotency
   getIdempotentResponse(key: string): Promise<{ status: number; body: unknown } | null>;
   putIdempotentResponse(key: string, response: { status: number; body: unknown }, ttlSeconds: number): Promise<void>;
+
+  // Optional capabilities (standalone deployments)
+  /** Deletes expired rows where the database has no native TTL. Returns rows removed. */
+  purgeExpired?(): Promise<number>;
+  /** Cluster-wide lease so only one replica runs a scheduled job. */
+  tryAcquireLease?(name: string, owner: string, ttlSeconds: number): Promise<boolean>;
 }

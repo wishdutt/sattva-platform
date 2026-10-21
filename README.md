@@ -2,7 +2,21 @@
 
 Invitation-only live events: an organizer broadcasts from the browser, invited and authenticated participants watch on the web or iOS/Android, chat and react, raise their hand, and speak on stage when a moderator approves. Up to 50 participants per event, optional private recording and replay.
 
-**Stack:** Next.js 16 + React 19 + Tailwind 4 · Expo SDK 58 / React Native 0.88 · LiveKit Cloud (WebRTC) · AWS Lambda (Node 22, TypeScript) · API Gateway HTTP API · Cognito · DynamoDB · S3 · SES · EventBridge · Secrets Manager · CloudWatch · Amplify Hosting · Terraform.
+**Stack:** Next.js 16 + React 19 + Tailwind 4 · Expo SDK 58 / React Native 0.88 · LiveKit (WebRTC) · Node 22 / TypeScript API.
+
+**Two deployment targets, same code:**
+
+| | AWS | Self-hosted (no AWS) |
+|---|---|---|
+| API | Lambda + API Gateway | Docker container / any Node host |
+| Data | DynamoDB | PostgreSQL |
+| Auth | Cognito | Any OIDC provider (Keycloak, Auth0, Zitadel…) |
+| Storage | S3 | S3-compatible (R2, MinIO, B2…) |
+| Email | SES | SMTP or Resend |
+| Jobs | EventBridge Scheduler | In-process scheduler (Postgres lease) |
+| Infra | Terraform | `docker-compose.yml` / Dockerfiles |
+
+See [docs/self-hosting.md](docs/self-hosting.md) for the non-AWS path.
 
 ```
 apps/web               Next.js app: dashboard, invitations, broadcaster Studio, viewer
@@ -41,8 +55,18 @@ Sign in with any email (choose **Organizer**), create an event, invite `viewer@e
 
 ## Tests
 
+### Full self-hosted stack in Docker
+
 ```bash
-npm test             # shared + API: 95 tests
+docker compose up --build   # Postgres, MinIO, Mailpit, Keycloak, LiveKit, API, web
+```
+
+Then open http://localhost:3000 and sign in as `organizer@example.com` / `LocalDev#Organizer1` (local demo realm only).
+
+## Tests
+
+```bash
+npm test             # shared (10) + API on in-memory store (95) + API on Postgres/PGlite (89)
 npm run test:e2e     # Playwright (starts both servers)
 npx tsx tests/load/join-storm.ts --dev --users 60   # with dev:api running
 npm run lint && npm run typecheck
@@ -52,7 +76,9 @@ See [docs/testing.md](docs/testing.md) for coverage, the 50-participant LiveKit 
 
 ## Deploy
 
-[docs/deployment.md](docs/deployment.md): bootstrap encrypted/locked remote state → `terraform apply` → write LiveKit + Egress credentials to Secrets Manager → register the LiveKit webhook → verify SES → add organizers to the Cognito group → Amplify Hosting → EAS builds.
+**Self-hosted:** [docs/self-hosting.md](docs/self-hosting.md) — Docker images, Postgres, OIDC, S3-compatible storage, SMTP/Resend.
+
+**AWS:** [docs/deployment.md](docs/deployment.md): bootstrap encrypted/locked remote state → `terraform apply` → write LiveKit + Egress credentials to Secrets Manager → register the LiveKit webhook → verify SES → add organizers to the Cognito group → Amplify Hosting → EAS builds.
 
 ## Docs
 
@@ -69,4 +95,5 @@ See [docs/testing.md](docs/testing.md) for coverage, the 50-participant LiveKit 
 | Web app (auth, dashboard, event form, invites/people/recordings, Studio, viewer) | Implemented; builds; 2 E2E flows pass. Media flow not yet exercised against real LiveKit. |
 | Mobile app (8 screens, LiveKit RN, speaker mode, push registration) | Implemented; typechecks and bundles (Metro). **Not yet run on a device** — needs an EAS dev build. |
 | Terraform (dev/prod, 9 modules) | `terraform validate` passes. **Not yet applied** to an AWS account. |
+| Self-hosted mode (Postgres, OIDC, S3-compatible, SMTP/Resend, scheduler) | Implemented; API suite passes on Postgres (PGlite); standalone bundle smoke-tested over HTTP. Docker images and `docker compose` **not yet built** locally (built in CI). OIDC sign-in not yet exercised against a live provider. |
 | CI/CD | GitHub Actions for lint/typecheck/tests/E2E/mobile bundle/terraform validate; OIDC deploy workflow |

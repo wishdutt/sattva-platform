@@ -44,7 +44,7 @@ describe('LiveKit webhook signature verification (real SDK)', () => {
   });
 
   it('the handler answers 401 without touching state when verification fails', async () => {
-    const w = createWorld({ livekit: gateway });
+    const w = await createWorld({ livekit: gateway });
     await expect(handleLiveKitWebhook(w.deps, body, 'garbage')).rejects.toMatchObject({ status: 401 });
   });
 });
@@ -54,7 +54,7 @@ describe('webhook event handling', () => {
     JSON.stringify({ event, id: `EV_${Math.random()}`, createdAt: 0, roomName, participantIdentity: identity, participantSid: sid });
 
   it('participant_left releases capacity and the speaker slot (idempotently)', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent({ maxSpeakers: 1 });
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -73,7 +73,7 @@ describe('webhook event handling', () => {
   });
 
   it('removes participants who join without an admission or membership', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.goLive(id);
     await handleLiveKitWebhook(w.deps, hook('participant_joined', `evt-${id}`, 'intruder'), 'mock-signature');
@@ -82,7 +82,7 @@ describe('webhook event handling', () => {
   });
 
   it('re-admits a member whose reconnect arrives after their "left" webhook', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);
@@ -97,7 +97,7 @@ describe('webhook event handling', () => {
   });
 
   it('ignores a stale "left" for an older connection', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     await w.goLive(id);

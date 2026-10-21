@@ -7,6 +7,30 @@ import { buildRouter } from '../src/http/routes';
 import { loadConfig } from '../src/lib/config';
 import { silentLogger } from '../src/lib/logger';
 import { MemoryStore } from '../src/store/memory';
+import { PostgresStore, migrate } from '../src/store/postgres';
+import { createPgliteDatabase, type SqlDatabase } from '../src/store/sql';
+import type { Store } from '../src/store/types';
+
+/**
+ * TEST_STORE=postgres runs the whole suite against PostgresStore on PGlite (real Postgres in WASM).
+ * One database per test file (vitest worker); tables are truncated for every new world.
+ */
+export const TEST_STORE = process.env.TEST_STORE === 'postgres' ? 'postgres' : 'memory';
+let pgDb: Promise<SqlDatabase> | undefined;
+
+async function freshStore(): Promise<Store> {
+  if (TEST_STORE === 'memory') return new MemoryStore();
+  pgDb ??= createPgliteDatabase().then(async (db) => {
+    await migrate(db);
+    return db;
+  });
+  const db = await pgDb;
+  const { rows } = await db.query<{ tablename: string }>(
+    `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'schema_migrations'`,
+  );
+  await db.exec(`TRUNCATE ${rows.map((r) => `"${r.tablename}"`).join(', ')} CASCADE`);
+  return new PostgresStore(db);
+}
 
 export const TOKENS = {
   admin: 'dev:admin@example.com:admin',
@@ -19,11 +43,11 @@ export const TOKENS = {
   stranger: 'dev:stranger@example.com',
 } as const;
 
-export type TestWorld = ReturnType<typeof createWorld>;
+export type TestWorld = Awaited<ReturnType<typeof createWorld>>;
 
-export function createWorld(opts: { livekit?: LiveKitGateway } = {}) {
+export async function createWorld(opts: { livekit?: LiveKitGateway } = {}) {
   let nowMs = Date.parse('2026-11-01T16:00:00Z');
-  const store = new MemoryStore();
+  const store = await freshStore();
   const livekit = (opts.livekit ?? new MockLiveKit()) as LiveKitGateway;
   const mailer = new OutboxMailer();
   const storage = new MockStorage();

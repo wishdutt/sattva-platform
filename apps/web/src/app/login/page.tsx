@@ -40,6 +40,24 @@ export default function LoginPage() {
     }
   }
 
+  if (config.authMode === 'oidc') {
+    return (
+      <AuthCard title="Sign in" subtitle="Welcome back. Sign in to see your events.">
+        <div className="space-y-3">
+          <Button className="w-full" size="lg" loading={busy} onClick={() => { setBusy(true); void auth.oidcRedirect(next); }}>
+            Continue with {config.oidc.providerName}
+          </Button>
+          <Button variant="secondary" className="w-full" onClick={() => void auth.oidcRedirect(next, { signUp: true })}>
+            Create account
+          </Button>
+          <p className="pt-2 text-center text-xs text-slate-500">
+            Password reset and email verification are handled on the sign-in page you will be redirected to.
+          </p>
+        </div>
+      </AuthCard>
+    );
+  }
+
   return (
     <AuthCard title="Sign in" subtitle="Welcome back. Sign in to see your events.">
       {config.authMode === 'dev' && (

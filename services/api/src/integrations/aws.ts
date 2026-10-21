@@ -62,13 +62,35 @@ export interface ObjectStorage {
   delete(key: string): Promise<void>;
 }
 
+export interface S3StorageOptions {
+  /** Custom endpoint for S3-compatible services (Cloudflare R2, MinIO, Backblaze B2, Wasabi…). */
+  endpoint?: string;
+  /**
+   * Endpoint browsers/devices use for presigned URLs when it differs from the server-side one
+   * (e.g. http://minio:9000 inside Docker vs http://localhost:9000 outside).
+   */
+  publicEndpoint?: string;
+  region?: string;
+  forcePathStyle?: boolean;
+  credentials?: { accessKeyId: string; secretAccessKey: string };
+}
+
 export class S3Storage implements ObjectStorage {
-  private readonly client = new S3Client({});
-  constructor(private readonly bucket: string) {}
+  private readonly client: S3Client;
+  private readonly signer: S3Client;
+
+  constructor(
+    private readonly bucket: string,
+    opts: S3StorageOptions = {},
+  ) {
+    const base = { region: opts.region, forcePathStyle: opts.forcePathStyle, credentials: opts.credentials };
+    this.client = new S3Client({ ...base, endpoint: opts.endpoint });
+    this.signer = opts.publicEndpoint ? new S3Client({ ...base, endpoint: opts.publicEndpoint }) : this.client;
+  }
 
   presignGet(key: string, expiresSeconds: number, downloadName?: string) {
     return getSignedUrl(
-      this.client,
+      this.signer,
       new GetObjectCommand({
         Bucket: this.bucket,
         Key: key,
@@ -80,7 +102,7 @@ export class S3Storage implements ObjectStorage {
 
   presignPut(key: string, contentType: string, contentLength: number, expiresSeconds: number) {
     return getSignedUrl(
-      this.client,
+      this.signer,
       new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType, ContentLength: contentLength }),
       { expiresIn: expiresSeconds },
     );

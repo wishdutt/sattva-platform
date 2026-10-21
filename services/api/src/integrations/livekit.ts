@@ -54,7 +54,7 @@ export interface NormalizedWebhookEvent {
 
 export interface RecordingTarget {
   filepath: string;
-  s3: { bucket: string; region: string; accessKey: string; secret: string };
+  s3: { bucket: string; region: string; accessKey: string; secret: string; endpoint?: string; forcePathStyle?: boolean };
 }
 
 /** Port over LiveKit Cloud. The real adapter uses livekit-server-sdk; tests use MockLiveKit. */
@@ -91,12 +91,17 @@ export class LiveKitCloudGateway implements LiveKitGateway {
   private readonly egress: EgressClient;
   private readonly webhooks: WebhookReceiver;
 
+  /**
+   * @param serverUrl  URL handed to clients (wss://…).
+   * @param apiUrl     URL the backend uses for server APIs when it differs (e.g. http://livekit:7880 in Docker).
+   */
   constructor(
     readonly serverUrl: string,
     private readonly apiKey: string,
     private readonly apiSecret: string,
+    apiUrl?: string,
   ) {
-    const host = serverUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+    const host = (apiUrl ?? serverUrl).replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
     this.rooms = new RoomServiceClient(host, apiKey, apiSecret);
     this.egress = new EgressClient(host, apiKey, apiSecret);
     this.webhooks = new WebhookReceiver(apiKey, apiSecret);
@@ -203,6 +208,8 @@ export class LiveKitCloudGateway implements LiveKitGateway {
           region: target.s3.region,
           accessKey: target.s3.accessKey,
           secret: target.s3.secret,
+          endpoint: target.s3.endpoint ?? '',
+          forcePathStyle: target.s3.forcePathStyle ?? false,
         }),
       },
     });

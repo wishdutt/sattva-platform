@@ -4,7 +4,7 @@ import type { MockLiveKit } from '../src/integrations/livekit';
 import { TOKENS, createWorld } from './helpers';
 
 async function liveWithViewers(maxSpeakers = 5) {
-  const w = createWorld();
+  const w = await createWorld();
   const id = await w.createEvent({ maxSpeakers });
   await w.addMember(id, TOKENS.broadcaster, 'BROADCASTER');
   for (const t of [TOKENS.viewer, TOKENS.viewer2, TOKENS.viewer3]) await w.addMember(id, t);
@@ -32,7 +32,7 @@ describe('raise hand', () => {
   });
 
   it('requires being in the room and the event being live', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.viewer);
     expect((await w.call('POST', `/events/${id}/raise-hand`, TOKENS.viewer, {})).status).toBe(409);

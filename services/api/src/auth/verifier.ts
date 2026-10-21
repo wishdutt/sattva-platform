@@ -16,11 +16,17 @@ export interface AuthVerifier {
   verify(bearerToken: string): Promise<AuthUser>;
 }
 
-export function platformRoleFromGroups(groups: string[]): PlatformRole {
-  if (groups.includes(COGNITO_GROUPS.admin)) return 'ADMIN';
-  if (groups.includes(COGNITO_GROUPS.organizer)) return 'ORGANIZER';
+export function platformRoleFromGroupNames(
+  groups: string[],
+  adminGroup: string = COGNITO_GROUPS.admin,
+  organizerGroup: string = COGNITO_GROUPS.organizer,
+): PlatformRole {
+  if (groups.includes(adminGroup)) return 'ADMIN';
+  if (groups.includes(organizerGroup)) return 'ORGANIZER';
   return 'USER';
 }
+
+export const platformRoleFromGroups = (groups: string[]) => platformRoleFromGroupNames(groups);
 
 function toAuthUser(claims: Record<string, unknown>): AuthUser {
   const groups = Array.isArray(claims['cognito:groups']) ? (claims['cognito:groups'] as string[]) : [];

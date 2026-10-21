@@ -1,0 +1,95 @@
+{
+  "realm": "stagecast",
+  "displayName": "Stagecast (local)",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "sslRequired": "none",
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 86400,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@stagecast.local",
+    "fromDisplayName": "Stagecast"
+  },
+  "groups": [{ "name": "organizers" }, { "name": "platform-admins" }],
+  "clients": [
+    {
+      "clientId": "stagecast-web",
+      "name": "Stagecast web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "stagecast-mobile",
+      "name": "Stagecast mobile",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["stagecast://auth", "exp://*"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "organizer@example.com",
+      "email": "organizer@example.com",
+      "firstName": "Olivia",
+      "lastName": "Organizer",
+      "enabled": true,
+      "emailVerified": true,
+      "groups": ["/organizers"],
+      "credentials": [{ "type": "password", "value": "LocalDev#Organizer1", "temporary": false }]
+    },
+    {
+      "username": "viewer@example.com",
+      "email": "viewer@example.com",
+      "firstName": "Victor",
+      "lastName": "Viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "LocalDev#Viewer1", "temporary": false }]
+    }
+  ]
+}

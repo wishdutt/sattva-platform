@@ -9,6 +9,9 @@ import type { Store } from './store/types';
 export interface EgressCredentials {
   accessKey: string;
   secret: string;
+  /** For S3-compatible targets (R2, MinIO…); omitted for AWS S3. */
+  endpoint?: string;
+  forcePathStyle?: boolean;
 }
 
 export interface AppDeps {

@@ -120,5 +120,6 @@ export async function closeAbandonedEvents(deps: AppDeps) {
       }
     }
   }
-  return { closed };
+  const purged = deps.store.purgeExpired ? await deps.store.purgeExpired() : 0;
+  return { closed, purged };
 }

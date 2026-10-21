@@ -3,9 +3,10 @@
 import { Alert, Button, Field, Input } from '@lsp/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AuthCard } from '@/components/app-shell';
 import { useAuth } from '@/lib/auth';
+import { config } from '@/lib/config';
 import { errorMessage, safeNext, useQueryParam } from '@/lib/hooks';
 
 export default function SignUpPage() {
@@ -17,6 +18,15 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // With an external OIDC provider, registration happens on the provider's hosted page.
+  const { oidcRedirect } = auth;
+  useEffect(() => {
+    if (config.authMode !== 'oidc') return;
+    void oidcRedirect(safeNext(new URLSearchParams(window.location.search).get('next')), { signUp: true });
+    // Run once on mount; oidcRedirect is recreated each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

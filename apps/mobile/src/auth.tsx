@@ -10,6 +10,7 @@ import {
 import { createApiClient, type ApiClient, type MeDto } from '@lsp/shared';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { config } from './config';
+import { oidcIdToken, oidcSignIn, oidcSignOut } from './oidc';
 
 const DEV_TOKEN_KEY = 'lsp.devToken';
 
@@ -22,6 +23,7 @@ if (config.authMode === 'cognito') {
 
 async function getIdToken(): Promise<string | null> {
   if (config.authMode === 'dev') return AsyncStorage.getItem(DEV_TOKEN_KEY);
+  if (config.authMode === 'oidc') return oidcIdToken();
   try {
     const session = await fetchAuthSession();
     return session.tokens?.idToken?.toString() ?? null;
@@ -73,6 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const username = email.trim().toLowerCase();
       if (config.authMode === 'dev') {
         await AsyncStorage.setItem(DEV_TOKEN_KEY, `dev:${username}`);
+      } else if (config.authMode === 'oidc') {
+        // Email/password are entered on the provider's hosted page, not in the app.
+        if (!(await oidcSignIn())) return;
       } else {
         const res = await signIn({ username, password });
         if (!res.isSignedIn) {
@@ -93,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       if (config.authMode === 'dev') await AsyncStorage.removeItem(DEV_TOKEN_KEY);
+      else if (config.authMode === 'oidc') await oidcSignOut();
       else await amplifySignOut();
       setMe(null);
       setStatus('signed_out');

@@ -5,7 +5,7 @@ import { reconcileEvent } from '../src/services/jobs';
 import { TOKENS, createWorld } from './helpers';
 
 async function liveEvent(overrides: Record<string, unknown> = {}) {
-  const w = createWorld();
+  const w = await createWorld();
   const id = await w.createEvent(overrides);
   await w.addMember(id, TOKENS.viewer);
   await w.addMember(id, TOKENS.viewer2);
@@ -15,19 +15,19 @@ async function liveEvent(overrides: Record<string, unknown> = {}) {
 
 describe('API validation', () => {
   it('returns 404 for unknown routes and 405 for wrong methods', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     expect((await w.call('GET', '/nope', TOKENS.viewer)).status).toBe(404);
     expect((await w.call('PUT', '/events', TOKENS.viewer, {})).status).toBe(405);
   });
 
   it('rejects invalid JSON and oversized bodies', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     expect((await w.call('POST', '/events', TOKENS.organizer, '{bad')).status).toBe(400);
     expect((await w.call('POST', '/events', TOKENS.organizer, 'x'.repeat(70_000))).status).toBe(413);
   });
 
   it('includes a request id and security headers', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('GET', '/me', TOKENS.viewer);
     expect(res.headers['X-Request-Id']).toBeTruthy();
     expect(res.headers['Cache-Control']).toBe('no-store');
@@ -53,7 +53,7 @@ describe('chat', () => {
   it('does not persist when persistence is disabled', async () => {
     const { w, id } = await liveEvent({ chatPersistence: false });
     await w.call('POST', `/events/${id}/chat`, TOKENS.viewer, { text: 'ephemeral' });
-    expect(w.store.chat.size).toBe(0);
+    expect(await w.store.listChatMessages(id, 10)).toHaveLength(0);
   });
 
   it('rate limits chat per user', async () => {

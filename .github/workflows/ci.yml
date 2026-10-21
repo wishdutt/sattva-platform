@@ -69,6 +69,28 @@ jobs:
       - run: npx expo install --check
       - run: npx expo export --platform android --platform ios --output-dir dist
 
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file
+        run: docker compose config --quiet
+      - name: Build API image
+        run: docker build -f services/api/Dockerfile -t stagecast-api:ci .
+      - name: Build web image
+        run: >
+          docker build -f apps/web/Dockerfile -t stagecast-web:ci
+          --build-arg NEXT_PUBLIC_API_URL=https://api.example.invalid
+          --build-arg NEXT_PUBLIC_OIDC_AUTHORITY=https://auth.example.invalid/realms/x
+          --build-arg NEXT_PUBLIC_OIDC_CLIENT_ID=ci .
+      - name: API image refuses unsafe production config
+        run: |
+          set +e
+          out=$(docker run --rm -e STORE=memory stagecast-api:ci 2>&1); code=$?
+          echo "$out"
+          test $code -ne 0 && echo "$out" | grep -q "not allowed when NODE_ENV=production"
+
   terraform:
     runs-on: ubuntu-latest
     timeout-minutes: 10

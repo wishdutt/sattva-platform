@@ -4,7 +4,7 @@ import { TOKENS, createWorld } from './helpers';
 
 describe('event lifecycle', () => {
   it('creates a scheduled event with the organizer as member', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('POST', '/events', TOKENS.organizer, {
       title: 'Launch',
       startAt: '2026-11-01T12:00:00-05:00',
@@ -25,7 +25,7 @@ describe('event lifecycle', () => {
   });
 
   it('validates input with structured errors', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const res = await w.call('POST', '/events', TOKENS.organizer, { title: '', durationMinutes: 5 });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -34,18 +34,18 @@ describe('event lifecycle', () => {
   });
 
   it('replays responses for a repeated Idempotency-Key', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const body = { title: 'Once', startAt: '2026-11-01T17:00:00Z', durationMinutes: 30, timeZone: 'UTC' };
     const headers = { 'Idempotency-Key': 'create-once-123' };
     const a = await w.call('POST', '/events', TOKENS.organizer, body, headers);
     const b = await w.call('POST', '/events', TOKENS.organizer, body, headers);
     expect(b.body.id).toBe(a.body.id);
     expect(b.headers['Idempotent-Replay']).toBe('true');
-    expect(w.store.events.size).toBe(1);
+    expect(await w.store.listEventsByOrganizer(await w.userId(TOKENS.organizer))).toHaveLength(1);
   });
 
   it('moves READY -> LIVE -> ENDED and manages the LiveKit room', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const lk = w.livekit as MockLiveKit;
     const id = await w.createEvent({ maxParticipants: 20 });
 
@@ -67,7 +67,7 @@ describe('event lifecycle', () => {
   });
 
   it('enforces allowed status transitions on PATCH', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     expect((await w.call('PATCH', `/events/${id}`, TOKENS.organizer, { status: 'DRAFT' })).body.status).toBe('DRAFT');
     expect((await w.call('PATCH', `/events/${id}`, TOKENS.organizer, { status: 'CANCELLED' })).body.status).toBe(
@@ -77,7 +77,7 @@ describe('event lifecycle', () => {
   });
 
   it('does not allow schedule or capacity changes while live', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.goLive(id);
     const res = await w.call('PATCH', `/events/${id}`, TOKENS.organizer, { maxParticipants: 10 });
@@ -87,7 +87,7 @@ describe('event lifecycle', () => {
   });
 
   it('broadcasters can start but not edit events', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     await w.addMember(id, TOKENS.broadcaster, 'BROADCASTER');
     expect((await w.call('POST', `/events/${id}/start`, TOKENS.broadcaster, {})).body.status).toBe('LIVE');
@@ -95,7 +95,7 @@ describe('event lifecycle', () => {
   });
 
   it('rejects thumbnail keys that belong to another event', async () => {
-    const w = createWorld();
+    const w = await createWorld();
     const id = await w.createEvent();
     const res = await w.call('PATCH', `/events/${id}`, TOKENS.organizer, { thumbnailKey: 'thumbnails/other/x.png' });
     expect(res.status).toBe(403);

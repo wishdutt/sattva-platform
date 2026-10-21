@@ -4,10 +4,17 @@ const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | und
 
 export const config = {
   apiUrl: extra.apiUrl ?? 'http://localhost:4000',
-  authMode: (extra.authMode ?? 'cognito') as 'cognito' | 'dev',
+  authMode: (extra.authMode ?? 'cognito') as 'cognito' | 'oidc' | 'dev',
   cognito: {
     userPoolId: extra.cognitoUserPoolId ?? '',
     clientId: extra.cognitoClientId ?? '',
+  },
+  oidc: {
+    issuer: extra.oidcIssuer ?? '',
+    clientId: extra.oidcClientId ?? '',
+    // offline_access yields a refresh token so sessions survive app restarts.
+    scope: extra.oidcScope ?? 'openid profile email offline_access',
+    providerName: extra.oidcProviderName ?? 'your organization account',
   },
   easProjectId: (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId,
 };
